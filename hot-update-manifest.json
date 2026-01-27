@@ -1,0 +1,15 @@
+{
+    "version": "1.0.1",
+    "updated_at": "2026-01-25T18:15:00Z",
+    "assets": [
+        "index.html",
+        "styles.css",
+        "animations.css",
+        "game.js",
+        "ui.js",
+        "ai.js",
+        "js/audio.js",
+        "assets/images/symbol-ladybug.svg",
+        "assets/images/symbol-wild.svg"
+    ]
+}

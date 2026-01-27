@@ -1,0 +1,340 @@
+@keyframes cardDraw {
+    from {
+        transform: translate(-200px, -200px) rotate(180deg) scale(0.5);
+        opacity: 0;
+    }
+
+    to {
+        transform: translate(0, 0) rotate(0) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes cardPlay {
+    0% {
+        transform: translate(0, 0) rotate(0) scale(1);
+        z-index: 100;
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(var(--dest-x), var(--dest-y)) rotate(var(--rot)) scale(1.1);
+        z-index: 50;
+        opacity: 1;
+    }
+}
+
+@keyframes shake {
+
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+        transform: translateX(-5px);
+    }
+
+    20%,
+    40%,
+    60%,
+    80% {
+        transform: translateX(5px);
+    }
+}
+
+.anim-draw {
+    animation: cardDraw 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.anim-play {
+    animation: cardPlay 0.5s ease-out forwards;
+}
+
+.anim-shake {
+    animation: shake 0.5s ease-in-out;
+}
+
+.glow-playable {
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.8) !important;
+    border-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.avatar-glow {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 70%);
+    opacity: 0;
+    z-index: -1;
+    transition: opacity 0.5s;
+}
+
+.active-turn .avatar-glow {
+    opacity: 1;
+    animation: pulseAvatar 2s infinite;
+}
+
+@keyframes pulseAvatar {
+    0% {
+        transform: scale(1);
+        opacity: 0.5;
+    }
+
+    50% {
+        transform: scale(1.2);
+        opacity: 0.8;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 0.5;
+    }
+}
+
+@keyframes interfaceSpin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.spin-interface {
+    animation: interfaceSpin 1s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.card-flying {
+    position: fixed;
+    z-index: 1000;
+    pointer-events: none;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    /* Transition is set via JS for dynamic coordinates, but we can set default properties here */
+    transform-origin: center center;
+}
+
+@keyframes miracleExplosion {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+        filter: hue-rotate(0deg);
+    }
+
+    50% {
+        transform: scale(1.5);
+        opacity: 1;
+        filter: hue-rotate(180deg);
+    }
+
+    100% {
+        transform: scale(2);
+        opacity: 0;
+        filter: hue-rotate(360deg);
+    }
+}
+
+@keyframes akumaFlight {
+    0% {
+        transform: translate(-100vw, 50vh) rotate(0deg);
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(100vw, -50vh) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+@keyframes miracleExplosion {
+    0% {
+        transform: scale(0);
+        opacity: 0;
+        filter: hue-rotate(0deg);
+    }
+
+    50% {
+        transform: scale(1.5);
+        opacity: 1;
+        filter: hue-rotate(180deg);
+    }
+
+    100% {
+        transform: scale(2);
+        opacity: 0;
+        filter: hue-rotate(360deg);
+    }
+}
+
+@keyframes akumaFlight {
+    0% {
+        transform: translate(-100vw, 50vh) rotate(0deg);
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(100vw, -50vh) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+.explosion-overlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 200px;
+    height: 200px;
+    margin: -100px;
+    background: radial-gradient(circle, #fff, #ff6b6b, #4facfe, #00f2fe);
+    border-radius: 50%;
+    z-index: 9999;
+    pointer-events: none;
+    animation: miracleExplosion 1s ease-out forwards;
+}
+
+.akuma-particle {
+    position: fixed;
+    z-index: 9999;
+    font-size: 30px;
+    pointer-events: none;
+    animation: akumaFlight 2s linear forwards;
+}
+
+@keyframes ladybugCurve {
+    0% {
+        left: -20%;
+        top: 80%;
+        transform: rotate(0deg) scale(1);
+    }
+
+    100% {
+        left: 120%;
+        top: 20%;
+        transform: rotate(45deg) scale(1);
+    }
+}
+
+.ladybug-flying {
+    position: fixed;
+    width: auto;
+    height: auto;
+    background: transparent;
+    /* Text only */
+    z-index: 2000000;
+    /* Absolute Priority */
+    pointer-events: none;
+    filter: drop-shadow(0 0 15px red);
+    /* Glow */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: ladybugCurve 4s linear forwards;
+    font-size: 150px;
+    /* Huge Size */
+    /* Starting position set by animation, but safe default */
+    left: -20%;
+    top: 80%;
+}
+
+.ladybug-flying::before {
+    display: none;
+    /* No pseudo-element needed */
+}
+
+@keyframes scratch-cross {
+    0% {
+        width: 0;
+        opacity: 0;
+        transform: translate(-50%, -50%) rotate(var(--rot)) scale(0.5);
+    }
+
+    10% {
+        opacity: 1;
+        width: 10vw;
+    }
+
+    50% {
+        width: 120vw;
+        opacity: 1;
+        transform: translate(-50%, -50%) rotate(var(--rot)) scale(1.2);
+    }
+
+    100% {
+        width: 150vw;
+        opacity: 0;
+        transform: translate(-50%, -50%) rotate(var(--rot)) scale(1.5);
+    }
+}
+
+.giant-scratch {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    background: linear-gradient(90deg, transparent, #39ff14, #ccff00, transparent);
+    z-index: 100000;
+    /* Priority Max */
+    pointer-events: none;
+    box-shadow: 0 0 50px #39ff14, 0 0 20px #fff;
+    height: 100px;
+    /* Bigger */
+    border-radius: 50px;
+    transform-origin: center;
+}
+
+.giant-scratch.one {
+    --rot: 45deg;
+    animation: scratch-cross 4s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+
+.giant-scratch.two {
+    --rot: -45deg;
+    animation: scratch-cross 4s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+    animation-delay: 0.2s;
+}
+
+@keyframes nightFadeIn {
+    0% {
+        background: rgba(0, 0, 40, 0);
+        backdrop-filter: brightness(1) saturate(1);
+    }
+
+    20% {
+        background: rgba(0, 0, 40, 0.5);
+        backdrop-filter: brightness(0.4) saturate(0.8) hue-rotate(200deg);
+    }
+
+    80% {
+        background: rgba(0, 0, 40, 0.5);
+        backdrop-filter: brightness(0.4) saturate(0.8) hue-rotate(200deg);
+    }
+
+    100% {
+        background: rgba(0, 0, 40, 0);
+        backdrop-filter: brightness(1) saturate(1);
+    }
+}
+
+.night-mode {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9998;
+    pointer-events: none;
+    animation: nightFadeIn 5s ease-in-out forwards;
+}

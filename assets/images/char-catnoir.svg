@@ -1,0 +1,49 @@
+<svg width="400" height="400" viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="neon-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+    <linearGradient id="cat-hair" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#fff176" />
+      <stop offset="40%" style="stop-color:#fdd835" />
+      <stop offset="100%" style="stop-color:#f57f17" />
+    </linearGradient>
+  </defs>
+
+  <!-- Ears -->
+  <path d="M130 110 L 110 40 L 180 80" fill="#121212" stroke="#000" stroke-width="2"/>
+  <path d="M270 110 L 290 40 L 220 80" fill="#121212" stroke="#000" stroke-width="2"/>
+
+  <!-- Face Shape -->
+  <path d="M130 250 Q 200 300 270 250 Q 290 180 290 130 Q 290 50 200 50 Q 110 50 110 130 Q 110 180 130 250" fill="#ffe0b2" stroke="#d7ccc8" stroke-width="1"/>
+
+  <!-- Mask -->
+  <path d="M115 135 Q 200 115 285 135 Q 290 155 270 180 Q 200 200 130 180 Q 110 155 115 135 Z" fill="#1a1a1a" filter="url(#neon-glow)"/>
+
+  <!-- Eyes (Glowing Green) -->
+  <g transform="translate(165, 155)">
+    <path d="M-20 0 Q 0 -12 20 0 Q 0 12 -20 0" fill="#76ff03" filter="url(#neon-glow)"/>
+    <rect x="-2" y="-8" width="4" height="16" rx="2" fill="#000"/>
+    <circle cx="4" cy="-3" r="2" fill="#fff" opacity="0.8"/>
+  </g>
+  <g transform="translate(235, 155)">
+    <path d="M-20 0 Q 0 -12 20 0 Q 0 12 -20 0" fill="#76ff03" filter="url(#neon-glow)"/>
+    <rect x="-2" y="-8" width="4" height="16" rx="2" fill="#000"/>
+    <circle cx="4" cy="-3" r="2" fill="#fff" opacity="0.8"/>
+  </g>
+
+  <!-- Hair (Messy) -->
+  <path d="M110 130 Q 100 80 150 60 Q 200 30 250 60 Q 300 80 290 130 L 280 100 Q 240 70 200 80 Q 160 70 120 100 Z" fill="url(#cat-hair)"/>
+  <path d="M180 60 L 200 35 L 220 60" fill="url(#cat-hair)"/>
+
+  <!-- Smirk -->
+  <path d="M185 245 Q 210 255 230 235" fill="none" stroke="#e64a19" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Bell (Collar) -->
+  <rect x="160" y="320" width="80" height="20" rx="10" fill="#000"/>
+  <circle cx="200" cy="350" r="25" fill="#ffd600" stroke="#f57f17" stroke-width="2"/>
+  <path d="M190 345 L 210 345" stroke="#f57f17" stroke-width="2"/>
+  <circle cx="200" cy="358" r="4" fill="#f57f17"/>
+
+</svg>

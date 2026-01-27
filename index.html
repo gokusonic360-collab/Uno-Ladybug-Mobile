@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Miraculous UNO - Mobile</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#ff3b3b">
+
+    <link rel="stylesheet" href="styles.css?v=v5_mobile">
+    <link rel="stylesheet" href="animations.css?v=v5_mobile">
+    <style>
+        /* Mobile Specific Overrides */
+        :root {
+            --sat: env(safe-area-inset-top);
+            --sab: env(safe-area-inset-bottom);
+            --sar: env(safe-area-inset-right);
+            --sal: env(safe-area-inset-left);
+        }
+
+        body,
+        .game-table {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            touch-action: none;
+            /* Disable zoom and native touch gestures */
+            user-select: none;
+            /* Prevent text Selection */
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            /* Remove tap highlight box */
+            position: fixed;
+            /* Lock to viewport */
+            top: 0;
+            left: 0;
+            overscroll-behavior: none;
+            /* Prevent rubber banding */
+        }
+
+        .game-table {
+            padding: calc(10px + var(--sat)) calc(10px + var(--sar)) calc(10px + var(--sab)) calc(10px + var(--sal));
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            box-sizing: border-box;
+            background: #000;
+        }
+
+        .player-hand .card,
+        .ai-hand .card {
+            margin-left: -50px;
+            /* Increased overlap for narrow screens */
+            transform: scale(0.75);
+            transition: transform 0.2s ease;
+        }
+
+        .player-hand .card.focused {
+            transform: translateY(-30px) scale(0.9) !important;
+            z-index: 100;
+        }
+
+        .game-logo {
+            font-size: 3rem;
+            text-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        .play-btn-large {
+            padding: 18px 45px;
+            font-size: 1.6rem;
+            border-radius: 50px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Hot Update Overlay */
+        #update-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #ff3b3b;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-family: 'Outfit', sans-serif;
+            transition: opacity 0.5s ease;
+        }
+
+        .update-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top: 5px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        .update-progress-container {
+            width: 250px;
+            height: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 15px;
+            display: none;
+        }
+
+        #update-progress-bar {
+            width: 0%;
+            height: 100%;
+            background: white;
+            transition: width 0.3s ease;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Prevent context menu on long press */
+        * {
+            -webkit-touch-callout: none;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Hot Update Overlay (Roblox Style) -->
+    <div id="update-overlay">
+        <div class="update-spinner"></div>
+        <h2 id="update-status">Checking for updates...</h2>
+        <div class="update-progress-container" id="progress-container">
+            <div id="update-progress-bar"></div>
+        </div>
+        <small style="margin-top: 10px; opacity: 0.7;">Hybrid Boot System v1.0</small>
+    </div>
+
+    <!-- Start Menu Overlay -->
+    <div id="start-screen" class="start-overlay">
+        <div class="start-content">
+            <h1 class="game-logo">Miraculous UNO</h1>
+            <p class="game-subtitle">Paris Edition</p>
+            <div style="display:flex; flex-direction:column; gap:20px; align-items:center;">
+                <button id="start-play-btn" class="play-btn-large">VS BOT</button>
+                <button id="start-2p-btn" class="play-btn-large"
+                    style="background:#8e44ad; font-size:1.8rem; padding:15px 50px;">1x1 (2 Players)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transition Yo-yo -->
+    <div id="transition-yoyo" class="yoyo-overlay hidden"></div>
+
+    <div id="game-container" class="hidden">
+        <!-- Background -->
+        <div class="background-layer"></div>
+
+        <!-- Game Table -->
+        <div class="game-table">
+
+            <!-- Opponent Zone (AI or Player 2) -->
+            <div class="opponent-area" id="opponent-area">
+                <div class="avatar ai-avatar">
+                    <div class="avatar-glow"></div>
+                    <img src="assets/images/symbol-wild.svg?v=1" alt="Opponent" class="avatar-icon" id="opponent-icon">
+                </div>
+                <!-- Hand is now interactive in 2P Mode -->
+                <div class="hand ai-hand" id="ai-hand">
+                    <!-- AI/P2 cards go here -->
+                </div>
+                <div class="status-bubble" id="ai-status">Waiting...</div>
+            </div>
+
+            <!-- Center Play Area -->
+            <div class="center-area">
+                <div class="deck-container">
+                    <div class="card-pile draw-pile" id="draw-pile">
+                        <div class="card card-back"></div>
+                    </div>
+                </div>
+
+                <div class="discard-container">
+                    <div class="card-pile discard-pile" id="discard-pile">
+                        <!-- Discarded cards go here -->
+                    </div>
+                </div>
+
+                <div class="direction-indicator" id="direction-indicator">
+                    <div class="arrow"></div>
+                </div>
+            </div>
+
+            <!-- Player Zone -->
+            <div class="player-area">
+                <div class="hand player-hand" id="player-hand">
+                    <!-- Player cards go here -->
+                </div>
+                <div class="player-controls">
+                    <button id="uno-btn" class="uno-btn hidden">UNO!</button>
+                </div>
+                <div class="avatar player-avatar">
+                    <img src="assets/images/symbol-ladybug.svg?v=1" alt="Player" class="avatar-icon">
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Overlays -->
+        <div id="color-picker-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2>Choose a Miracle Color</h2>
+                <div class="color-options">
+                    <button class="color-btn red" data-color="red" title="Ladybug"></button>
+                    <button class="color-btn green" data-color="green" title="Cat Noir"></button>
+                    <button class="color-btn blue" data-color="blue" title="Viperion"></button>
+                    <button class="color-btn yellow" data-color="yellow" title="Queen Bee"></button>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-end-modal" class="modal hidden">
+            <div class="modal-content result-content">
+                <h1 id="result-title">Victory!</h1>
+                <p id="result-message">You saved Paris!</p>
+                <button id="restart-btn" class="primary-btn">Play Again</button>
+            </div>
+        </div>
+
+        <div id="turn-indicator" class="turn-toast hidden">Your Turn</div>
+        <div id="turn-blocker" class="turn-blocker hidden"
+            style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:2000; color:white; display:flex; justify-content:center; align-items:center; flex-direction:column; text-align:center;">
+            <h1 id="blocker-msg">Pass the Device</h1>
+            <button id="ready-btn" class="play-btn-large"
+                style="margin-top:20px; font-size:1.5rem; padding:10px 40px;">READY</button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/updater.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="game.js?v=v6_update"></script>
+    <script src="ui.js?v=v6_update"></script>
+    <script src="ai.js?v=v6_update"></script>
+    <script>
+        // Hot Update Bootstrapper
+        async function bootGame() {
+            const overlay = document.getElementById('update-overlay');
+            const statusText = document.getElementById('update-status');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('update-progress-bar');
+
+            // 1. Check for updates
+            const updateApplied = await window.UnoUpdater.checkAndApplyUpdates((percent) => {
+                progressContainer.style.display = 'block';
+                statusText.innerText = `Downloading updates... ${percent}%`;
+                progressBar.style.width = `${percent}%`;
+            });
+
+            if (updateApplied) {
+                statusText.innerText = "Updates applied! Restarting...";
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                // Fade out and start
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.style.display = 'none', 500);
+            }
+        }
+
+        // Start boot sequence
+        bootGame();
+
+        // Preventive scroll lock for mobile
+        document.addEventListener('touchmove', function (e) {
+            if (e.touches.length > 1) e.preventDefault(); // Prevent multi-touch zoom
+        }, { passive: false });
+
+        // Ensure audio context starts on first touch
+        document.addEventListener('click', function () {
+            if (window.soundManager) window.soundManager.initContext();
+        }, { once: true });
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(reg => {
+                        console.log('Service Worker Registered', reg);
+                        // Auto-update check
+                        reg.onupdatefound = () => {
+                            const installingWorker = reg.installing;
+                            installingWorker.onstatechange = () => {
+                                if (installingWorker.state === 'installed') {
+                                    if (navigator.serviceWorker.controller) {
+                                        console.log('New content available; please refresh.');
+                                        // Optional: toast to notify user
+                                    }
+                                }
+                            };
+                        };
+                    })
+                    .catch(err => console.log('SW Error', err));
+            });
+        }
+    </script>
+</body>
+
+</html>
