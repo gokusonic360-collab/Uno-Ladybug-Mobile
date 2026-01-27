@@ -88,6 +88,18 @@ class SoundManager {
         this.sounds.bgm.currentTime = 0;
         this.initialized = false;
     }
+
+    async refreshDynamicAssets() {
+        console.log('Refreshing dynamic audio assets...');
+        // Example: If bgm is updated dynamically
+        const dynamicBgmUrl = await window.AssetManager.getAssetUrl('bgm_01', null);
+        if (dynamicBgmUrl) {
+            console.log('Applying dynamic BGM');
+            this.sounds.bgm = new Audio(dynamicBgmUrl);
+            this.sounds.bgm.loop = true;
+            this.sounds.bgm.volume = 0.3;
+        }
+    }
 }
 
 window.soundManager = new SoundManager();
