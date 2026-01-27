@@ -54,7 +54,7 @@
             flex-direction: column;
             justify-content: space-between;
             box-sizing: border-box;
-            background: #000;
+            background: transparent;
         }
 
         .player-hand .card,
@@ -148,11 +148,12 @@
     <!-- Hot Update Overlay (Roblox Style) -->
     <div id="update-overlay">
         <div class="update-spinner"></div>
-        <h2 id="update-status">Checking for updates...</h2>
+        <h2 id="boot-status">Checking for updates...</h2>
         <div class="update-progress-container" id="progress-container">
-            <div id="update-progress-bar"></div>
+            <div id="boot-progress-bar"
+                style="width: 0%; height: 100%; background: white; transition: width 0.3s ease;"></div>
         </div>
-        <small style="margin-top: 10px; opacity: 0.7;">Hybrid Boot System v1.0</small>
+        <small style="margin-top: 10px; opacity: 0.7;">Hybrid Boot System v1.5</small>
     </div>
 
     <!-- Start Menu Overlay -->
@@ -256,6 +257,7 @@
     </div>
 
     <!-- Scripts -->
+    <script src="js/asset_manager.js"></script>
     <script src="js/updater.js"></script>
     <script src="js/audio.js"></script>
     <script src="game.js?v=v6_update"></script>
@@ -265,24 +267,43 @@
         // Hot Update Bootstrapper
         async function bootGame() {
             const overlay = document.getElementById('update-overlay');
-            const statusText = document.getElementById('update-status');
+            const bootStatus = document.getElementById('boot-status');
+            const bootProgress = document.getElementById('boot-progress-bar');
             const progressContainer = document.getElementById('progress-container');
-            const progressBar = document.getElementById('update-progress-bar');
 
-            // 1. Check for updates
-            const updateApplied = await window.UnoUpdater.checkAndApplyUpdates((percent) => {
-                progressContainer.style.display = 'block';
-                statusText.innerText = `Downloading updates... ${percent}%`;
-                progressBar.style.width = `${percent}%`;
-            });
+            try {
+                // 1. Check for mandatory updates
+                bootStatus.innerText = "Checking Miracles...";
+                const updated = await window.Updater.checkForUpdates();
 
-            if (updateApplied) {
-                statusText.innerText = "Updates applied! Restarting...";
-                setTimeout(() => window.location.reload(), 1000);
-            } else {
-                // Fade out and start
-                overlay.style.opacity = '0';
-                setTimeout(() => overlay.style.display = 'none', 500);
+                if (updated) {
+                    bootProgress.style.width = "50%";
+                }
+
+                // 2. Refresh dynamic assets
+                if (window.soundManager && window.soundManager.refreshDynamicAssets) {
+                    await window.soundManager.refreshDynamicAssets();
+                }
+
+                if (window.ui && window.ui.refreshDynamicBackground) {
+                    await window.ui.refreshDynamicBackground();
+                }
+
+                bootProgress.style.width = "100%";
+                bootStatus.innerText = "Sincronização Completa!";
+
+                setTimeout(() => {
+                    overlay.style.opacity = '0';
+                    setTimeout(() => overlay.style.display = 'none', 500);
+                }, 800);
+
+            } catch (error) {
+                console.error("Boot failed:", error);
+                bootStatus.innerText = "Offline Mode";
+                setTimeout(() => {
+                    overlay.style.opacity = '0';
+                    setTimeout(() => overlay.style.display = 'none', 500);
+                }, 1000);
             }
         }
 

@@ -1,6 +1,6 @@
 {
     "game_name": "Uno Ladybug Mobile",
-    "latest_version": 1.0,
+    "latest_version": 1.1,
     "status_servidor": "online",
     "mensagem_boot": "Uno Ladybug: Sincronizando Milagres...",
     "assets_obrigatorios": [
@@ -9,7 +9,13 @@
             "tipo": "imagem",
             "arquivo": "fundo_carta.png",
             "url": "https://gokusonic360-collab.github.io/Uno-Ladybug-Mobile/assets/fundo_carta.png"
+        },
+        {
+            "id": "bg_gameplay_01",
+            "tipo": "imagem",
+            "arquivo": "cenario_ladybug.png",
+            "url": "https://gokusonic360-collab.github.io/Uno-Ladybug-Mobile/assets/cenario_ladybug.png"
         }
     ],
-    "notas_da_atualizacao": "Sistema de auto-update ativado! 🐞✨"
+    "notas_da_atualizacao": "Novo cenário da Ladybug adicionado! 🐞✨ (v1.1)"
 }

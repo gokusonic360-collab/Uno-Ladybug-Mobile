@@ -193,8 +193,6 @@ class UI {
         // Handle character portraits
         const premiumValues = ['plus2', 'reverse', 'wild', 'plus4'];
         if (card.type === 'number' || premiumValues.includes(card.value)) {
-            const version = Date.now();
-
             // Map colors to Portuguese folders for mobile builds
             const colorMap = {
                 'red': 'vermelhas',
@@ -204,9 +202,14 @@ class UI {
                 'wild': 'especiais'
             };
             const folder = colorMap[card.color] || card.color;
-            const individualPath = `assets/cards/${folder}/${card.value}.png?v=2`; // Simplified versioning
+            const assetId = `card_${card.color}_${card.value}`;
+            const individualPath = `assets/cards/${folder}/${card.value}.png`;
 
-            symbol.style.backgroundImage = `url('${individualPath}')`;
+            // Use AssetManager to get the URL (prioritizing dynamic assets)
+            window.AssetManager.getAssetUrl(assetId, individualPath).then(url => {
+                symbol.style.backgroundImage = `url('${url}')`;
+            });
+
             symbol.style.backgroundSize = 'cover';
             symbol.style.backgroundPosition = 'center';
             symbol.classList.add('individual-card');
@@ -356,7 +359,11 @@ class UI {
 
         if (cardEl) {
             const rect = cardEl.getBoundingClientRect();
+            // IMMEDIATE REMOVAL/HIDE to prevent "clones"
+            cardEl.style.visibility = 'hidden';
+
             const flyingCard = cardEl.cloneNode(true);
+            flyingCard.style.visibility = 'visible';
 
             // If it was a card back (AI/Hidden P2), reveal it for the throw
             if (flyingCard.classList.contains('card-back')) {
@@ -365,12 +372,12 @@ class UI {
                 const temp = this.createCardElement(card, true);
                 flyingCard.innerHTML = temp.innerHTML;
                 flyingCard.style.backgroundImage = temp.style.backgroundImage;
-                // Copy any inline styles related to background if set on cardEl
             }
 
-            // Remove original
+            // Remove original from DOM
             cardEl.remove();
 
+            // Re-render hand immediately
             this.renderHand(playerId, this.game.players[playerId].hand);
 
             flyingCard.classList.add('card-flying');
@@ -410,6 +417,23 @@ class UI {
             this.updateDiscardPile(card);
             this.renderHand(playerId, this.game.players[playerId].hand);
             this.triggerSpecialEffects(card);
+        }
+    }
+
+    async refreshDynamicBackground() {
+        console.log('Refreshing dynamic background...');
+        const bgLayer = document.querySelector('.background-layer');
+        if (!bgLayer) return;
+
+        // Tenta buscar o cenário dinâmico
+        const dynamicBgUrl = await window.AssetManager.getAssetUrl('bg_gameplay_01', null);
+
+        if (dynamicBgUrl) {
+            console.log('Applying dynamic background: bg_gameplay_01');
+            bgLayer.style.backgroundImage = `url('${dynamicBgUrl}')`;
+        } else {
+            console.log('Dynamic background not found. Using local background.');
+            bgLayer.style.backgroundImage = "url('assets/images/background.png')";
         }
     }
 
