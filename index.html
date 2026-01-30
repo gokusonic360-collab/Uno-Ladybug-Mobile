@@ -257,12 +257,21 @@
     </div>
 
     <!-- Scripts -->
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="js/asset_manager.js"></script>
     <script src="js/updater.js"></script>
     <script src="js/audio.js"></script>
     <script src="game.js?v=v6_update"></script>
     <script src="ui.js?v=v6_update"></script>
     <script src="ai.js?v=v6_update"></script>
+    <script src="js/firebase_config.js"></script>
+    <script src="js/lobby_manager.js"></script>
+    <script src="js/online_manager.js"></script>
+    <script src="js/multiplayer.js"></script>
     <script>
         // Hot Update Bootstrapper
         async function bootGame() {
@@ -271,12 +280,30 @@
             const bootProgress = document.getElementById('boot-progress-bar');
             const progressContainer = document.getElementById('progress-container');
 
-            try {
-                // 1. Check for mandatory updates
-                bootStatus.innerText = "Checking Miracles...";
-                const updated = await window.Updater.checkForUpdates();
+            // FAIL-SAFE: Force hide overlay after 4 seconds no matter what
+            setTimeout(() => {
+                if (overlay.style.display !== 'none') {
+                    console.warn("Boot took too long. Forcing start...");
+                    bootStatus.innerText = "Iniciando Offline...";
+                    overlay.style.opacity = '0';
+                    setTimeout(() => overlay.style.display = 'none', 500);
+                }
+            }, 4000);
 
-                if (updated) {
+            try {
+                // 1. Check for mandatory updates with Timeout
+                bootStatus.innerText = "Checking Miracles...";
+
+                const updatePromise = window.Updater.checkForUpdates();
+                // We keep the promise race for logic flow, but the fail-safe above guarantees unblock.
+                const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve('timeout'), 3000));
+
+                const result = await Promise.race([updatePromise, timeoutPromise]);
+
+                if (result === 'timeout') {
+                    console.warn('Update check timed out. Skipping...');
+                    bootStatus.innerText = "Starting Offline...";
+                } else if (result === true) {
                     bootProgress.style.width = "50%";
                 }
 

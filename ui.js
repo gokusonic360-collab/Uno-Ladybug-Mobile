@@ -44,6 +44,33 @@ class UI {
         this.initTurnBlocker();
     }
 
+    // CRITICAL FIX: launchGame as class method so it's accessible everywhere
+    launchGame(mode) {
+        const startScreen = document.getElementById('start-screen');
+        const gameContainer = document.getElementById('game-container');
+        const yoyo = document.getElementById('transition-yoyo');
+
+        console.log(`[UI] Launching game in mode: ${mode}`);
+
+        // Play Yo-yo transition
+        window.soundManager.play('menu_click');
+        window.soundManager.startMusic();
+        yoyo.classList.remove('hidden');
+        yoyo.classList.add('yoyo-animating');
+
+        setTimeout(() => {
+            startScreen.classList.add('hidden');
+            gameContainer.classList.remove('hidden');
+            this.game.startMatch(mode);
+            console.log(`[UI] Game container visible, match started`);
+        }, 500);
+
+        setTimeout(() => {
+            yoyo.classList.add('hidden');
+            yoyo.classList.remove('yoyo-animating');
+        }, 1000);
+    }
+
     initTurnBlocker() {
         this.turnBlockerEl = document.getElementById('turn-blocker');
         this.readyBtn = document.getElementById('ready-btn');
@@ -88,31 +115,270 @@ class UI {
         const yoyo = document.getElementById('transition-yoyo');
         const gameContainer = document.getElementById('game-container');
 
-        const launchGame = (mode) => {
-            // Play Yo-yo transition
-            window.soundManager.play('menu_click'); // Click Sound
-            window.soundManager.startMusic();
-            yoyo.classList.remove('hidden');
-            yoyo.classList.add('yoyo-animating');
-
-            setTimeout(() => {
-                startScreen.classList.add('hidden');
-                gameContainer.classList.remove('hidden');
-                this.game.startMatch(mode);
-            }, 500);
-
-            setTimeout(() => {
-                yoyo.classList.add('hidden');
-                yoyo.classList.remove('yoyo-animating');
-            }, 1000);
-        };
+        // launchGame is now a class method - removed local definition
 
         if (playBtn) {
-            playBtn.addEventListener('click', () => launchGame('bot'));
+            playBtn.addEventListener('click', () => this.launchGame('bot'));
         }
         if (p2Btn) {
-            p2Btn.addEventListener('click', () => launchGame('1v1'));
+            p2Btn.addEventListener('click', () => this.launchGame('1v1'));
         }
+
+        // Online Mode Elements
+        const onlineBtn = document.createElement('button');
+        onlineBtn.className = 'play-btn-large';
+        onlineBtn.style.background = '#2980b9';
+        onlineBtn.innerText = "ONLINE";
+        onlineBtn.style.marginTop = '15px';
+
+        const onlineMenu = document.createElement('div');
+        onlineMenu.className = 'hidden';
+        onlineMenu.style.display = 'flex';
+        onlineMenu.style.flexDirection = 'column';
+        onlineMenu.style.gap = '10px';
+        onlineMenu.style.alignItems = 'center';
+
+        // Check URL for room param (Legacy Link Support)
+        const urlParams = new URLSearchParams(window.location.search);
+        const roomParam = urlParams.get('room');
+
+        // New Lobby UI Structure
+        onlineMenu.innerHTML = `
+            <h2 style="color:white; margin:0;">Lobby</h2>
+            <div id="lobby-list" style="width:90%; height:200px; background:rgba(0,0,0,0.5); border-radius:10px; overflow-y:auto; padding:10px; text-align:left; color:white;">
+                <div style="text-align:center; padding-top:80px; color:#bdc3c7;">Loading Rooms...</div>
+            </div>
+            
+            <div style="display:flex; gap:10px; margin-top:10px; width:90%; justify-content:center;">
+                 <button id="open-create-modal-btn" class="play-btn-large" style="background:#e67e22; font-size:1rem; padding:10px 20px; flex:1;">CREATE ROOM</button>
+            </div>
+            
+            <button id="back-menu-btn" style="background:transparent; border:none; color:white; text-decoration:underline; margin-top:5px;">Back</button>
+            
+            <!-- Modals -->
+            <div id="create-room-modal" class="hidden" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:100;">
+                <h3 style="color:white;">Create Room</h3>
+                <input type="text" id="new-room-name" placeholder="Room Name" style="padding:10px; font-size:1.2rem; border-radius:5px; margin-bottom:10px; width:80%;">
+                <input type="number" id="new-room-pass" placeholder="Password (4 digits)" style="padding:10px; font-size:1.2rem; border-radius:5px; margin-bottom:10px; width:80%;" maxlength="4">
+                <button id="confirm-create-btn" class="play-btn-large" style="background:#2ecc71;">CREATE</button>
+                <button id="cancel-create-btn" style="color:white; background:transparent; border:none; margin-top:10px; text-decoration:underline;">Cancel</button>
+                <div id="create-status" style="color:yellow; margin-top:5px;"></div>
+            </div>
+
+            <div id="password-prompt-modal" class="hidden" style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); display:flex; flex-direction:column; justify-content:center; align-items:center; z-index:100;">
+                <h3 style="color:white;">Enter Password for <span id="target-room-name"></span></h3>
+                <input type="number" id="join-room-pass" placeholder="Password" style="padding:10px; font-size:1.2rem; border-radius:5px; margin-bottom:10px; width:80%;" maxlength="4">
+                <button id="confirm-join-btn" class="play-btn-large" style="background:#3498db;">JOIN</button>
+                <button id="cancel-join-btn" style="color:white; background:transparent; border:none; margin-top:10px; text-decoration:underline;">Cancel</button>
+                <div id="join-status" style="color:yellow; margin-top:5px;"></div>
+            </div>
+        `;
+
+        p2Btn.parentNode.appendChild(onlineBtn);
+        p2Btn.parentNode.appendChild(onlineMenu);
+
+        // Elements
+        const lobbyList = onlineMenu.querySelector('#lobby-list');
+        const openCreateBtn = onlineMenu.querySelector('#open-create-modal-btn');
+        const createModal = onlineMenu.querySelector('#create-room-modal');
+        const confirmCreateBtn = onlineMenu.querySelector('#confirm-create-btn');
+        const cancelCreateBtn = onlineMenu.querySelector('#cancel-create-btn');
+        const newRoomName = onlineMenu.querySelector('#new-room-name');
+        const newRoomPass = onlineMenu.querySelector('#new-room-pass');
+        const createStatus = onlineMenu.querySelector('#create-status');
+
+        const passModal = onlineMenu.querySelector('#password-prompt-modal');
+        const targetRoomName = onlineMenu.querySelector('#target-room-name');
+        const joinPass = onlineMenu.querySelector('#join-room-pass');
+        const confirmJoinBtn = onlineMenu.querySelector('#confirm-join-btn');
+        const cancelJoinBtn = onlineMenu.querySelector('#cancel-join-btn');
+        const joinStatus = onlineMenu.querySelector('#join-status');
+
+        let selectedRoomId = null;
+
+        // --- Logic ---
+
+        onlineBtn.addEventListener('click', () => {
+            console.log('[UI] ONLINE button clicked');
+            playBtn.classList.add('hidden');
+            p2Btn.classList.add('hidden');
+            onlineBtn.classList.add('hidden');
+            onlineMenu.classList.remove('hidden');
+
+            // Start Listening to Rooms
+            if (window.LobbyManager) {
+                console.log('[UI] Starting to listen for rooms...');
+                window.LobbyManager.listenToRooms((rooms) => {
+                    console.log(`[UI] Received ${rooms.length} rooms from Firebase`);
+
+                    if (rooms.length === 0) {
+                        lobbyList.innerHTML = `<div style="text-align:center; padding-top:80px; color:#bdc3c7;">No rooms found. Create one!</div>`;
+                    } else {
+                        lobbyList.innerHTML = '';
+                        rooms.forEach(room => {
+                            console.log(`[UI] Creating button for room: ${room.name} (ID: ${room.id})`);
+
+                            const item = document.createElement('div');
+                            item.style.background = 'rgba(255,255,255,0.1)';
+                            item.style.padding = '10px';
+                            item.style.marginBottom = '5px';
+                            item.style.borderRadius = '5px';
+                            item.style.display = 'flex';
+                            item.style.justifyContent = 'space-between';
+                            item.style.alignItems = 'center';
+                            item.innerHTML = `<span>${room.name}</span> <button class="join-btn" data-id="${room.id}" data-name="${room.name}" style="background:#3498db; border:none; color:white; padding:5px 15px; border-radius:5px; cursor:pointer;">Join</button>`;
+                            lobbyList.appendChild(item);
+
+                            // CRITICAL: Add event listener to the dynamically created button
+                            const joinBtn = item.querySelector('.join-btn');
+                            joinBtn.addEventListener('click', (e) => {
+                                console.log(`[UI] Join button clicked for room: ${e.target.dataset.name}`);
+                                selectedRoomId = e.target.dataset.id;
+                                targetRoomName.innerText = e.target.dataset.name;
+                                passModal.classList.remove('hidden');
+                                joinPass.value = '';
+                                joinPass.focus();
+                                passModal.style.display = 'flex'; // Ensure flex
+                            });
+                        });
+                    }
+                });
+            } else {
+                console.error('[UI] LobbyManager not found!');
+                lobbyList.innerHTML = `<div style="color:red; text-align:center; padding-top:80px;">Lobby System Error (Missing DB)</div>`;
+            }
+        });
+
+        const closeOnlineMenu = () => {
+            playBtn.classList.remove('hidden');
+            p2Btn.classList.remove('hidden');
+            onlineBtn.classList.remove('hidden');
+            onlineMenu.classList.add('hidden');
+            if (window.LobbyManager) window.LobbyManager.stopListening();
+        };
+
+        onlineMenu.querySelector('#back-menu-btn').addEventListener('click', closeOnlineMenu);
+
+        // CREATE ROOM FLOW
+        openCreateBtn.addEventListener('click', () => {
+            console.log('[UI] Create Room button clicked');
+            createModal.classList.remove('hidden');
+            createModal.style.display = 'flex';
+            newRoomName.value = '';
+            newRoomPass.value = '';
+            createStatus.innerText = '';
+        });
+
+        cancelCreateBtn.addEventListener('click', () => {
+            console.log('[UI] Cancel Create button clicked');
+            createModal.classList.add('hidden');
+            createModal.style.display = 'none';
+        });
+
+        confirmCreateBtn.addEventListener('click', () => {
+            const name = newRoomName.value;
+            const pass = newRoomPass.value;
+
+            console.log(`[UI] Confirm Create clicked - Name: "${name}", Pass: "${pass}"`);
+
+            if (!name || !pass) {
+                createStatus.innerText = "Name and Password required!";
+                return;
+            }
+
+            createStatus.innerText = "Initializing Host...";
+
+            if (!window.OnlineManager) {
+                createStatus.innerText = "Error: OnlineManager missing";
+                console.error('[UI] OnlineManager class not found!');
+                return;
+            }
+
+            // 1. Init Peer Host
+            if (!window.onlineManager) {
+                console.log('[UI] Creating new OnlineManager instance');
+                window.onlineManager = new window.OnlineManager(this.game);
+            }
+
+            let currentDbRoomId = null;
+
+            console.log('[UI] Initializing Peer as Host...');
+            window.onlineManager.init(true, null, (status, data) => {
+                console.log(`[Host] Status Update: ${status}`, data);
+
+                if (status === 'ROOM_CREATED') {
+                    // 2. Peer Ready, Create in Lobby
+                    createStatus.innerText = "Registering Room...";
+                    console.log(`[Host] Peer ID created: ${data}, registering in Firebase...`);
+
+                    window.LobbyManager.createRoom(name, pass, data, (dbRoomId) => {
+                        currentDbRoomId = dbRoomId;
+                        console.log(`[Host] Room registered in Firebase with ID: ${dbRoomId}`);
+
+                        // CRITICAL: Update OnlineManager with the Firebase Room ID
+                        window.onlineManager.dbRoomId = dbRoomId;
+
+                        createStatus.innerText = "Waiting for player...";
+
+                        // UI stays blocked until player joins
+                        createModal.innerHTML = `<h3 style="color:white;">Room: ${name}</h3><div style="color:#f1c40f;">Waiting for player...</div>`;
+                    }, (err) => {
+                        console.error('[Host] Firebase error:', err);
+                        createStatus.innerText = "DB Error: " + err;
+                    });
+                } else if (status === 'CONNECTED') {
+                    // Player joined!
+                    console.log('[Host] Client connected to peer!');
+                    createStatus.innerText = "Player Connected! Starting...";
+                } else if (status === 'GAME_STARTING') {
+                    console.log('[Host] Game starting, cleaning up lobby...');
+                    createModal.classList.add('hidden');
+
+                    // Note: Room cleanup is now handled in OnlineManager.markGameStarted()
+
+                    setTimeout(() => this.launchGame('online'), 500);
+                }
+            }, pass); // pass is not strictly needed for Host peer verification now, but good to keep state
+        });
+
+        // JOIN FLOW
+        cancelJoinBtn.addEventListener('click', () => {
+            passModal.classList.add('hidden');
+            passModal.style.display = 'none';
+        });
+
+        confirmJoinBtn.addEventListener('click', () => {
+            const pass = joinPass.value;
+            if (!pass) return;
+
+            joinStatus.innerText = "Validating...";
+
+            window.LobbyManager.validateRoom(selectedRoomId, pass, (hostPeerId) => {
+                joinStatus.innerText = "Password Correct! Connecting...";
+
+                if (!window.onlineManager) window.onlineManager = new window.OnlineManager(this.game);
+
+                // CRITICAL: Set the Firebase Room ID for Player 2
+                window.onlineManager.dbRoomId = selectedRoomId;
+
+                // Connect to Host Peer
+                window.onlineManager.init(false, hostPeerId, (status, data) => {
+                    console.log(`[Client] Status: ${status}`);
+
+                    if (status === 'CONNECTED') {
+                        joinStatus.innerText = "Connected! Waiting for host...";
+                    } else if (status === 'WAITING_FOR_HOST') {
+                        joinStatus.innerText = "Handshaking...";
+                        // Player 2 is now listening for game start via Firebase
+                    } else if (status === 'ERROR') {
+                        joinStatus.innerText = "Connection Error: " + data;
+                    }
+                }, pass, selectedRoomId); // Pass Firebase Room ID as 5th parameter
+
+            }, (err) => {
+                joinStatus.innerText = err;
+            });
+        });
     }
 
     renderHand(playerId, hand) {

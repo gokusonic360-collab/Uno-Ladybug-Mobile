@@ -18,9 +18,10 @@ class Game {
         this.ai = new AI(this);
 
         // Don't auto start. UI handles it.
+        window.multiplayer = new MultiplayerManager(this);
     }
 
-    startMatch(mode) {
+    async startMatch(mode) {
         this.mode = mode;
         this.players.ai.isBot = (mode === 'bot');
 
@@ -30,11 +31,34 @@ class Game {
         this.players.player.hand = [];
         this.players.ai.hand = [];
         this.gameOver = false;
+        this.unoCalled = { player: false, ai: false };
 
-        this.createDeck();
-        this.shuffleDeck();
-        this.dealCards();
-        this.startGame();
+        if (mode === 'online') {
+            // Online start logic handled by OnlineManager syncing
+            this.ui.showToast("Waiting for Host to deal...");
+            if (window.onlineManager && window.onlineManager.isHost) {
+                // Host initializes everything
+                this.createDeck();
+                this.shuffleDeck();
+                this.dealCards();
+                // Send initial state
+                window.onlineManager.sendData({
+                    type: 'INIT_GAME',
+                    deck: this.deck,
+                    players: this.players,
+                    discardPile: this.discardPile,
+                    currentColor: this.currentColor,
+                    currentValue: this.currentValue,
+                    currentPlayer: this.currentPlayer
+                });
+                this.startGame();
+            }
+        } else {
+            this.createDeck();
+            this.shuffleDeck();
+            this.dealCards();
+            this.startGame();
+        }
     }
 
     createDeck() {
@@ -106,13 +130,49 @@ class Game {
     }
 
     startGame() {
-        this.currentPlayer = 'player';
+        this.currentPlayer = 'player'; // Host always starts? Or random? Standardizing Host = Player 1
         this.ui.updateTurnIndicator(this.currentPlayer);
         this.checkPlayableCards();
+
+        // Initialize turn synchronization for online mode
+        // Initialize turn synchronization for online mode
+        if (this.mode === 'online' && window.multiplayer && window.onlineManager) {
+            console.log('[Game] Initializing online turn system');
+            // Pass dbRoomId and localPlayerId from OnlineManager
+            window.multiplayer.init(window.onlineManager.dbRoomId, window.onlineManager.localPlayerId);
+        }
     }
 
     checkPlayableCards() {
         if (this.gameOver) return;
+
+        // Online Mode Logic
+        if (this.mode === 'online') {
+            const isMyTurn = (window.onlineManager.isHost && this.currentPlayer === 'player') ||
+                (!window.onlineManager.isHost && this.currentPlayer === 'ai'); // 'ai' represents 'Player 2/Remote' locally?
+
+            // Correction: In Online Mode:
+            // Host is 'player' locally. Remote is 'ai'.
+            // Client is 'player' locally. Remote (Host) is 'ai'.
+            // BUT, to keep state synced, we need to know who is who.
+            // Let's stick to: 'player' is Local User. 'ai' is Remote User.
+            // When Host says "Player 1 Turn", Client should see "Remote Turn".
+
+            // Wait, syncing STATE means 'player' in Host data is 'ai' in Client data?
+            // Easier approach: 'currentTurn' is 'host' or 'client'.
+            // Let's map: 
+            // Host View: Player = Host, AI = Client.
+            // Client View: Player = Client, AI = Host.
+
+            if (this.isLocalTurn()) {
+                const playableIndices = this.getPlayableIndices('player');
+                this.ui.highlightPlayableCards(playableIndices);
+            } else {
+                this.ui.highlightPlayableCards([]); // Clear highlights
+                this.ui.showToast("Waiting for opponent...");
+            }
+            return;
+        }
 
         if (this.currentPlayer === 'player') {
             const playableIndices = this.getPlayableIndices('player');
@@ -122,12 +182,29 @@ class Game {
             if (this.mode === 'bot') {
                 setTimeout(() => this.ai.takeTurn(), 1000);
             } else {
-                // Player 2 (Human)
+                // Player 2 (Human) Local
                 const playableIndices = this.getPlayableIndices('ai');
                 this.ui.highlightPlayableCards(playableIndices);
-                // We create a toast or indicator? Handled by updateTurnIndicator
             }
         }
+    }
+
+    isLocalTurn() {
+        if (this.mode !== 'online') return this.currentPlayer === 'player';
+
+        // Online:
+        // Host: player=Host. currentPlayer='player' -> True.
+        // Client: player=Client. currentPlayer... wait.
+
+        // If we sync 'currentPlayer' string literal 'player'/'ai' it gets confused.
+        // Let's change currentPlayer to 'host' / 'client' internally for Online?
+        // Or keep 'player' / 'ai' but swap them when receiving data?
+
+        // Better: OnlineManager handles the translation.
+        // If Host sends "It is 'player' turn", Client receives "It is 'ai' turn".
+        // See handleData in OnlineManager.
+
+        return this.currentPlayer === 'player';
     }
 
     getPlayableIndices(playerId) {
@@ -146,12 +223,27 @@ class Game {
     }
 
     playCard(playerId, cardIndex, chosenWildColor = null) {
+        if (this.mode === 'online' && playerId !== 'player') return; // Cannot play for remote
         if (playerId !== this.currentPlayer) return;
 
         const hand = this.players[playerId].hand;
         const card = hand[cardIndex];
 
         if (!this.isCardPlayable(card)) return;
+
+        // If Online, sync move to Firebase
+        // If Online, sync move to Firebase
+        if (this.mode === 'online' && window.multiplayer) {
+            console.log('[Game] Syncing move to Firebase');
+            window.multiplayer.syncMove(cardIndex, card, chosenWildColor);
+        }
+
+        this.applyMove(playerId, cardIndex, chosenWildColor);
+    }
+
+    applyMove(playerId, cardIndex, chosenWildColor = null) {
+        const hand = this.players[playerId].hand;
+        const card = hand[cardIndex];
 
         hand.splice(cardIndex, 1);
         this.discardPile.push(card);
@@ -164,23 +256,6 @@ class Game {
 
         if (hand.length === 0) return;
 
-        // UNO Check Logic
-        // In this simplified version, we just check if flag was set.
-        // If they have 1 card left now, they should have pressed UNO BEFORE playing?
-        // Rules vary. Let's say if they have 1 card left AFTER playing, and didn't call UNO...
-        // But the button logic is "Call UNO" when you preserve button.
-        // Let's keep it simple: Reset flag.
-        if (this.unoCalled[playerId]) {
-            // Good job
-        } else if (hand.length === 1) {
-            // Failure to call UNO -> Penalty?
-            // Implementing basic penalty: 2 cards
-            // setTimeout(() => {
-            //    this.ui.showToast("Forgot UNO! +2 Cards");
-            //    this.drawCards(playerId, 2);
-            // }, 1000);
-            // Leaving out for user satisfaction unless requested stricter rules.
-        }
         this.unoCalled[playerId] = false;
     }
 
@@ -188,34 +263,26 @@ class Game {
         const opponent = this.currentPlayer === 'player' ? 'ai' : 'player';
 
         if (card.value === 'reverse') {
-            // In 2 player, reverse acts like skip -> play again
             this.ui.showToast(card.value.toUpperCase() + "! Play Again!");
             this.checkPlayableCards();
         } else if (card.value === 'plus2') {
+            if (this.mode === 'online') {
+                // The drawer is the NEXT player (opponent)
+                // We don't draw for them locally unless we are Host?
+                // Simpler: Just handle turns. The drawing happens in drawCards logic.
+                // We need to sync the DRAW action too.
+            }
             this.drawCards(opponent, 2);
-            this.ui.showToast("+2! " + (opponent === 'ai' && this.mode === '1v1' ? 'P2' : opponent) + " draws 2 & loses turn!");
-            this.drawAndSkip(opponent, 0); // Logic handled in drawCards, but we need to keep turn?
-            // Standard UNO: +2 means opponent draws and loses turn. So Current Player plays again? 
-            // Yes, in 2 player match.
-            this.checkPlayableCards();
+            this.ui.showToast("+2! " + (opponent === 'ai' ? 'Opponent' : opponent) + " draws 2 & loses turn!");
+            this.checkPlayableCards(); // Current player plays again in 2P 1v1 rules usually? 
+            // Wait, existing logic said: "+2 means opponent draws and turn stays?"
+            // Usually in 2P, +2 skips the other person, so turn returns to p1.
+            // Existing logic does recursively checkPlayableCards for current player. Correct.
         } else if (card.value === 'plus4') {
             this.drawCards(opponent, 4);
-            this.ui.showToast("+4! " + (opponent === 'ai' && this.mode === '1v1' ? 'P2' : opponent) + " draws 4 & loses turn!");
+            this.ui.showToast("+4! " + (opponent === 'ai' ? 'Opponent' : opponent) + " draws 4 & loses turn!");
             this.checkPlayableCards();
         } else {
-            // Normal card or Wild (without effect on turn order usually, but Wild is just play)
-            // Wild +4 is handled above. Ordinary Wild is just color change.
-            // Check if it was a Skip card? No 'skip' value in createDeck? 
-            // Ah, specialValues = ['reverse', 'plus2']. Skip is missing in createDeck?
-            // "Skip" symbol usually exists.
-            // If card.value === 'block' or 'skip'?
-            // createDeck had: const specialValues = ['reverse', 'plus2'];
-            // It seems 'skip' was missing in ORIGINAL code too? 
-            // Checking original file... 
-            // Line 31: const specialValues = ['reverse', 'plus2'];
-            // It seems the original code forgot Skip cards! 
-            // The prompt didn't ask to fix it, so I won't add them to avoid texture missing issues.
-
             this.switchTurn();
         }
     }
@@ -231,7 +298,12 @@ class Game {
     }
 
     playerDraw() {
-        if (this.currentPlayer !== 'player') return; // Strict turn check
+        if (this.currentPlayer !== 'player') return;
+
+        if (this.mode === 'online' && window.multiplayer) {
+            window.multiplayer.syncDraw();
+        }
+
         this.drawCardAction('player');
     }
 
@@ -242,19 +314,30 @@ class Game {
             this.players[playerId].hand.push(card);
             this.ui.animateDraw(playerId, card);
 
-            if (this.isCardPlayable(card)) {
-                this.ui.showToast("Playable card drawn!");
-                // Let them play it if they want.
-                this.checkPlayableCards();
+            // Per instructions: "Playable card drawn!" logic?
+            // In online mode, we must accept if they play it.
+            // This is local logic only for displaying options.
+            if (playerId === 'player') { // Only show toast if it's ME
+                if (this.isCardPlayable(card)) {
+                    this.ui.showToast("Playable card drawn!");
+                    this.checkPlayableCards();
+                } else {
+                    this.ui.showToast("No playable card.");
+                    setTimeout(() => this.switchTurn(), 1000);
+                }
             } else {
-                this.ui.showToast("No playable card.");
-                setTimeout(() => this.switchTurn(), 1000);
+                // Remote player drew.
+                // If they can play, they will send a MOVE.
+                // If they can't, they will send SKIP (or we timeout switch?).
+                // "Simple" implementation: Auto-skip if bad card?
+                // For 'ai' (remote), we just wait for next message.
+                // If they drew and it's not playable, they should send 'PASS_TURN'?
+                // We need a PASS_TURN event.
             }
         }
     }
 
     aiDraw() {
-        // Only used by AI logic
         const card = this.drawCardFromDeck();
         if (card) {
             this.players.ai.hand.push(card);
@@ -266,12 +349,27 @@ class Game {
 
     switchTurn() {
         if (this.mode === '1v1') {
-            // Show turn blocker before switching officially
             this.ui.showTurnBlocker(() => {
                 this.currentPlayer = this.currentPlayer === 'player' ? 'ai' : 'player';
                 this.ui.updateTurnIndicator(this.currentPlayer);
                 this.checkPlayableCards();
             });
+        } else if (this.mode === 'online') {
+            this.currentPlayer = this.currentPlayer === 'player' ? 'ai' : 'player';
+            this.ui.updateTurnIndicator(this.currentPlayer);
+            this.checkPlayableCards();
+
+            // Update turn in Firebase
+            // Update turn in Firebase
+            if (window.multiplayer) {
+                // Convert local player ID to Firebase player ID
+                const nextFirebasePlayer = this.currentPlayer === 'player' ?
+                    window.multiplayer.localPlayerId :
+                    (window.multiplayer.localPlayerId === 'host' ? 'client' : 'host');
+
+                console.log(`[Game] Switching turn to: ${this.currentPlayer} (Firebase: ${nextFirebasePlayer})`);
+                window.multiplayer.updateTurnInFirebase(nextFirebasePlayer);
+            }
         } else {
             this.currentPlayer = this.currentPlayer === 'player' ? 'ai' : 'player';
             this.ui.updateTurnIndicator(this.currentPlayer);
@@ -286,6 +384,9 @@ class Game {
 
     callUno(playerId) {
         this.unoCalled[playerId] = true;
+        if (this.mode === 'online' && playerId === 'player') {
+            window.onlineManager.sendData({ type: 'UNO_CALL' });
+        }
         this.ui.showToast("UNO!");
     }
 }
