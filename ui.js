@@ -42,6 +42,10 @@ class UI {
         // Final Release: Start Menu
         this.initStartScreen();
         this.initTurnBlocker();
+
+        // Minigame
+        this.minigameOverlay = document.getElementById('minigame-overlay');
+        this.minigame = new MinigameRunner('minigame-canvas', 'minigame-timer');
     }
 
     // CRITICAL FIX: launchGame as class method so it's accessible everywhere
@@ -447,17 +451,17 @@ class UI {
 
         const botRight = document.createElement('span');
         botRight.className = 'card-corner bottom-right';
-        botRight.innerText = card.value === 'wild' ? 'W' : (card.value === 'plus4' ? '+4' : (card.value === 'plus2' ? '+2' : card.value));
+        botRight.innerText = card.value === 'wild' ? 'W' : (card.value === 'plus4' ? '+4' : (card.value === 'plus2' ? '+2' : (card.value === 'miraculous_race' ? '🚗' : card.value)));
 
         const centerVal = document.createElement('div');
         centerVal.className = 'card-value-center';
-        centerVal.innerText = card.value;
+        centerVal.innerText = card.value === 'miraculous_race' ? 'RACE' : card.value;
 
         const symbol = document.createElement('div');
         symbol.className = 'card-symbol';
 
         // Handle character portraits
-        const premiumValues = ['plus2', 'reverse', 'wild', 'plus4'];
+        const premiumValues = ['plus2', 'reverse', 'wild', 'plus4', 'miraculous_race'];
         if (card.type === 'number' || premiumValues.includes(card.value)) {
             // Map colors to Portuguese folders for mobile builds
             const colorMap = {
@@ -469,7 +473,11 @@ class UI {
             };
             const folder = colorMap[card.color] || card.color;
             const assetId = `card_${card.color}_${card.value}`;
-            const individualPath = `assets/cards/${folder}/${card.value}.png`;
+            let individualPath = `assets/cards/${folder}/${card.value}.png`;
+
+            if (card.value === 'miraculous_race') {
+                individualPath = 'assets/images/miraculous_race.png'; // New Official Art
+            }
 
             // Use AssetManager to get the URL (prioritizing dynamic assets)
             window.AssetManager.getAssetUrl(assetId, individualPath).then(url => {
@@ -531,9 +539,14 @@ class UI {
         // Just selection sound? Or play logic handles "swipe"?
         // Logic splits here for Wild.
         if (card.color === 'wild') {
-            this.pendingWildCardIndex = index;
-            window.soundManager.play('menu_click'); // Selection click
-            this.showColorModal();
+            if (card.value === 'miraculous_race') {
+                // Skip color selection for this card
+                this.game.playCard(playerId, index);
+            } else {
+                this.pendingWildCardIndex = index;
+                window.soundManager.play('menu_click'); // Selection click
+                this.showColorModal();
+            }
         } else {
             // Normal play -> will call playCard -> animatePlay -> SWIPE sound
             this.game.playCard(playerId, index);
@@ -545,7 +558,33 @@ class UI {
     }
 
     resolveWildCard(color) {
-        window.soundManager.play('magic_color'); // Magic sound
+        // Mobile Fix: Ensure context is initialized on user gesture
+        if (window.soundManager) window.soundManager.initContext();
+
+        // character voice based on color
+        const voiceMap = {
+            'red': 'VOICE_LADYBUG',
+            'green': 'VOICE_CATNOIR',
+            'blue': 'VOICE_VIPERION',
+            'yellow': 'VOICE_QUEENBEE'
+        };
+
+        const voiceId = voiceMap[color];
+
+        // Get the card to check if it's a +4 (Coringa)
+        const player = this.game.players[this.game.currentPlayer];
+        const card = player.hand[this.pendingWildCardIndex];
+        const isPlus4 = card && card.value === 'plus4';
+
+        if (voiceId && isPlus4) {
+            window.soundManager.play(voiceId);
+        } else if (isPlus4) {
+            window.soundManager.play('magic_color'); // Fallback for +4
+        } else {
+            // For regular Wild or Miraculous Race, just play a subtle selection sound
+            window.soundManager.play('menu_click');
+        }
+
         this.colorModal.classList.add('hidden');
         if (this.pendingWildCardIndex !== null) {
             this.game.playCard(this.game.currentPlayer, this.pendingWildCardIndex, color);
@@ -831,6 +870,32 @@ class UI {
         toast.style.animation = 'none';
         toast.offsetHeight;
         toast.style.animation = 'fadeInOut 2s forwards';
+    }
+
+    startMinigame(targetPlayerId, callback) {
+        console.log(`[UI] Starting Minigame for: ${targetPlayerId}`);
+        const isBot = this.game.players[targetPlayerId].isBot;
+
+        if (isBot) {
+            this.showToast("BOT EM FUGA! OBSERVE!");
+        } else {
+            const playerTag = (targetPlayerId === 'player') ? 'PLAYER 1' : 'PLAYER 2';
+            this.showToast(`CONTROLE PARA: ${playerTag}!`);
+        }
+
+        // Brief delay for the toast and mental preparation
+        setTimeout(() => {
+            if (this.minigameOverlay) {
+                this.minigameOverlay.classList.remove('hidden');
+            }
+
+            this.minigame.start(isBot, (result) => {
+                if (this.minigameOverlay) {
+                    this.minigameOverlay.classList.add('hidden');
+                }
+                callback(result);
+            });
+        }, 2000);
     }
 
     showGameOver(winnerId) {

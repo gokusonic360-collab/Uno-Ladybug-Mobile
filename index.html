@@ -148,12 +148,12 @@
     <!-- Hot Update Overlay (Roblox Style) -->
     <div id="update-overlay">
         <div class="update-spinner"></div>
-        <h2 id="boot-status">Checking for updates...</h2>
+        <h2 id="boot-status">Carregando Miraculous...</h2>
         <div class="update-progress-container" id="progress-container">
             <div id="boot-progress-bar"
                 style="width: 0%; height: 100%; background: white; transition: width 0.3s ease;"></div>
         </div>
-        <small style="margin-top: 10px; opacity: 0.7;">Hybrid Boot System v1.5</small>
+        <small style="margin-top: 10px; opacity: 0.7;">Versão Mobile 1.5</small>
     </div>
 
     <!-- Start Menu Overlay -->
@@ -247,6 +247,18 @@
             </div>
         </div>
 
+        <div id="minigame-overlay" class="hidden"
+            style="position:fixed; top:0; left:0; width:100%; height:100%; z-index:5000; background:#000;">
+            <canvas id="minigame-canvas"></canvas>
+            <div id="minigame-ui"
+                style="position:absolute; top:20px; left:0; width:100%; text-align:center; pointer-events:none;">
+                <div id="minigame-timer"
+                    style="color:#ff3b3b; font-size:3rem; font-weight:900; text-shadow:0 2px 10px rgba(0,0,0,0.8);">12s
+                </div>
+                <div style="color:white; font-size:1.2rem; margin-top:10px;">DESVIE DOS OBSTÁCULOS!</div>
+            </div>
+        </div>
+
         <div id="turn-indicator" class="turn-toast hidden">Your Turn</div>
         <div id="turn-blocker" class="turn-blocker hidden"
             style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:2000; color:white; display:flex; justify-content:center; align-items:center; flex-direction:column; text-align:center;">
@@ -265,6 +277,7 @@
     <script src="js/asset_manager.js"></script>
     <script src="js/updater.js"></script>
     <script src="js/audio.js"></script>
+    <script src="js/minigame.js"></script>
     <script src="game.js?v=v6_update"></script>
     <script src="ui.js?v=v6_update"></script>
     <script src="ai.js?v=v6_update"></script>
@@ -292,7 +305,7 @@
 
             try {
                 // 1. Check for mandatory updates with Timeout
-                bootStatus.innerText = "Checking Miracles...";
+                bootStatus.innerText = "Preparando Talismãs...";
 
                 const updatePromise = window.Updater.checkForUpdates();
                 // We keep the promise race for logic flow, but the fail-safe above guarantees unblock.
@@ -302,7 +315,7 @@
 
                 if (result === 'timeout') {
                     console.warn('Update check timed out. Skipping...');
-                    bootStatus.innerText = "Starting Offline...";
+                    bootStatus.innerText = "Iniciando em modo offline...";
                 } else if (result === true) {
                     bootProgress.style.width = "50%";
                 }
@@ -317,7 +330,7 @@
                 }
 
                 bootProgress.style.width = "100%";
-                bootStatus.innerText = "Sincronização Completa!";
+                bootStatus.innerText = "Tudo Pronto!";
 
                 setTimeout(() => {
                     overlay.style.opacity = '0';

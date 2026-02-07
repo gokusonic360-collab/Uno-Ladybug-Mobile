@@ -17,7 +17,13 @@ class SoundManager {
 
             // Placeholders for Hero Sounds
             hero_ladybug: new Audio('assets/sounds/lucky_charm.mp3'),
-            hero_catnoir: new Audio('assets/sounds/cataclysm.mp3')
+            hero_catnoir: new Audio('assets/sounds/cataclysm.mp3'),
+
+            // Thematic Voice Sounds (Requested IDs)
+            VOICE_LADYBUG: new Audio('assets/sounds/ladybug_shout.mp3'),
+            VOICE_CATNOIR: new Audio('assets/sounds/catnoir_shout.mp3'),
+            VOICE_VIPERION: new Audio('assets/sounds/viperion_shout.mp3'),
+            VOICE_QUEENBEE: new Audio('assets/sounds/queenbee_shout.mp3')
         };
 
         // BGM Configuration
@@ -98,6 +104,25 @@ class SoundManager {
             this.sounds.bgm = new Audio(dynamicBgmUrl);
             this.sounds.bgm.loop = true;
             this.sounds.bgm.volume = 0.3;
+        }
+
+        // Refresh Hero Voices from Asset Manager
+        // Paths are now set to the moved files
+        const voiceConfig = [
+            { id: 'VOICE_LADYBUG', defaultPath: 'assets/sounds/ladybug.mp3' },
+            { id: 'VOICE_CATNOIR', defaultPath: 'assets/sounds/gato_preto.mp3' },
+            { id: 'VOICE_VIPERION', defaultPath: 'assets/sounds/viperion_shout.mp3' }, // Placeholder or effect
+            { id: 'VOICE_QUEENBEE', defaultPath: 'assets/sounds/amarela.mp3' }
+        ];
+
+        for (const config of voiceConfig) {
+            const url = await window.AssetManager.getAssetUrl(config.id, config.defaultPath);
+            if (url) {
+                console.log(`Applying dynamic voice: ${config.id}`);
+                this.sounds[config.id] = new Audio(url);
+                // Volume capped at 1.0 (Browser limit)
+                this.sounds[config.id].volume = 1.0;
+            }
         }
     }
 }

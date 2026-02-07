@@ -81,6 +81,9 @@ class Game {
             this.deck.push({ color: 'wild', value: 'wild', type: 'wild' });
             this.deck.push({ color: 'wild', value: 'plus4', type: 'wild' });
         }
+        for (let i = 0; i < 2; i++) {
+            this.deck.push({ color: 'wild', value: 'miraculous_race', type: 'wild' });
+        }
     }
 
     shuffleDeck() {
@@ -250,7 +253,10 @@ class Game {
         this.ui.animatePlay(playerId, card, cardIndex);
 
         this.currentValue = card.value;
-        this.currentColor = (card.color === 'wild') ? chosenWildColor : card.color;
+        if (card.value !== 'miraculous_race') {
+            this.currentColor = (card.color === 'wild') ? chosenWildColor : card.color;
+        }
+        // If it's miraculous_race, currentColor stays as is.
 
         this.handleCardEffect(card);
 
@@ -282,6 +288,21 @@ class Game {
             this.drawCards(opponent, 4);
             this.ui.showToast("+4! " + (opponent === 'ai' ? 'Opponent' : opponent) + " draws 4 & loses turn!");
             this.checkPlayableCards();
+        } else if (card.value === 'miraculous_race') {
+            const launcher = this.currentPlayer;
+            // The opponent is the one who has to survive or fail
+            this.ui.startMinigame(opponent, (result) => {
+                if (result === 'lose') {
+                    // Failed: opponent draws 1
+                    this.drawCards(opponent, 1);
+                    this.ui.showToast("Falha na Corrida! Compra 1.");
+                } else {
+                    // Survived: launcher draws 2 (as requested)
+                    this.drawCards(launcher, 2);
+                    this.ui.showToast("Corrida Vencida! Lançador compra 2.");
+                }
+                this.switchTurn();
+            });
         } else {
             this.switchTurn();
         }
